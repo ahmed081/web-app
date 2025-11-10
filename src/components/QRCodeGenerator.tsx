@@ -1,55 +1,39 @@
-import React, {useRef, useState} from 'react';
-import QRCode from 'react-qr-code';
+import {useEffect, useState} from "react";
+import {QRCode} from "antd";
+import {getFingerprint} from "../utils/generateSessionId";
+import { collection, setDoc, doc } from "firebase/firestore";
+import { db } from "../utils/firebaseConfig.ts";
+import { UploadOutlined } from '@ant-design/icons';
+import type { UploadProps } from 'antd';
+import { Button, message, Upload } from 'antd';
+const QrCodeGenerator: React.FC = () => {
+    const [showQrBar, setshowQrBar] = useState<boolean>(false);
+    const [newSessionId, setNewSessionId] = useState<string>(null);
 
-function QRCodeGenerator() {
-    const [offer, setOffer] = useState<string | null>(null);
-    const [connectionStatus, setConnectionStatus] = useState('Not connected');
-    const peerConnection = useRef<RTCPeerConnection>(new RTCPeerConnection());
 
-    const startConnection = async () => {
-        // Handle ICE candidates
-        peerConnection.current.onicecandidate = (event) => {
-            if (event.candidate) {
-                console.log('ICE Candidate:', event.candidate);
+    useEffect(() => {
+        getFingerprint().then(value => {
+            setNewSessionId(value)
+            setDoc(doc(collection(db, "sessions"), value), {
+                lastUpdated: new Date(),
+            }, { merge: true }).then(() => {
+                setshowQrBar(true);
+            });
+        });
+
+    }, [])
+
+
+    return (
+        <div style={{textAlign: "center", marginTop: "20px"}}>
+            {
+                showQrBar && <div style={{marginTop: "20px"}}>
+                    <QRCode value={newSessionId} size={200}/>
+                    <p>Scan this QR code to connect {newSessionId}</p>
+                </div>
             }
-        };
+        </div>
+    );
+};
 
-
-        // Create an SDP offer
-        const localOffer = await peerConnection.current.createOffer();
-        await peerConnection.current.setLocalDescription(localOffer);
-
-        setOffer(JSON.stringify(localOffer));
-        console.log('Offer created:', localOffer);
-    };
-
-    const handleAnswer = async (answer: string) => {
-        if (!peerConnection.current) return;
-
-        const remoteDesc = new RTCSessionDescription(JSON.parse(answer));
-        await peerConnection.current.setRemoteDescription(remoteDesc);
-
-        setConnectionStatus('Connected');
-        console.log('Connected to remote peer');
-    };
-
-    return (<div>
-            <h1>WebRTC Connection</h1>
-
-            {!offer ? (<button onClick={startConnection}>Start Connection</button>) : (<div>
-                    <h2>Scan the QR Code with Mobile App</h2>
-
-                <QRCode value={offer} size={200}/>
-                </div>)}
-
-            <div>
-                <h3>Connection Status: {connectionStatus}</h3>
-                <textarea
-                    placeholder="Paste Answer SDP here"
-                    onBlur={(e) => handleAnswer(e.target.value)}
-                />
-            </div>
-        </div>);
-}
-
-export default QRCodeGenerator;
+export default QrCodeGenerator;

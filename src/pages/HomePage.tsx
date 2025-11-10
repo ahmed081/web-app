@@ -10,6 +10,7 @@ function HomePage() {
         <div>
             <h1>Welcome to the Web App</h1>
             <Link to="/dashboard">Go to Dashboard</Link>
+            <Link to="/web-receiver">Go to Web Receiver</Link>
         </div>
     );
 }
